@@ -399,7 +399,6 @@ class DynamicBayesianNetwork(DirectedGraph):
         >>> dbn.get_cpds()
         """
         # TODO: fix bugs in this
-        # self.initialize_initial_state()
         if node:
             if node not in super(DynamicBayesianNetwork, self).nodes():
                 raise ValueError('Node not present in the model.')
@@ -505,46 +504,19 @@ class DynamicBayesianNetwork(DirectedGraph):
         >>> student.initialize_initial_state()
         """
         for cpd in self.cpds:
-            print(cpd)
-            print('cpd.variable :: ',cpd.variable)
-            print('cpd.variable_card :: ',cpd.variable_card)
-            print('1 - cpd.variable[1] :: ',1 - cpd.variable[1])
-            print('cpd.variables :: ',cpd.variables)
-            print('cpd.cardinality :: ',cpd.cardinality)
-            print('cpd.cardinality[:0:-1] :: ',cpd.cardinality[:0:-1])
-            print('get_cardinality :: ',self.get_cardinality(cpd.variable))
-
             temp_var = (cpd.variable[0], 1 - cpd.variable[1])
-            print('temp_var :: ', temp_var)
-
             parents = self.get_parents(temp_var)
-            print('parents :: ',parents)
 
-            j = cpd.variables[:0:-1]
-            parent = []
-            # print('j',j)
-            for i in j:
-            	parent.append((i[0],1 - i[1]))
-            print('parent:: ',parent)
-
-            if parent == parents:
-            	pass
-            else:
-            	parents = parent	
-            # parent_cardinality = []
-            # for parent in parents:
-            #     print(parent)
-            #     parent_cardinality.append(self.get_cardinality(parent))
-
-
+            parents_card = []
+            for parent in parents:
+                parents_card.append(self._get_cardinality(parent))
 
             if not any(x.variable == temp_var for x in self.cpds):
                 if all(x[1] == parents[0][1] for x in parents):
                     if parents:
-                        evidence_card = cpd.cardinality[:0:-1]
                         new_cpd = TabularCPD(temp_var, cpd.variable_card,
-                                             cpd.values.reshape(cpd.variable_card, np.prod(evidence_card)),
-                                             parents, evidence_card)
+                                             cpd.values.reshape(cpd.variable_card, np.prod(parents_card)),
+                                             parents, parents_card)
                     else:
                         if cpd.get_evidence():
                             initial_cpd = cpd.marginalize(cpd.get_evidence(), inplace=False)
@@ -554,16 +526,10 @@ class DynamicBayesianNetwork(DirectedGraph):
                     self.add_cpds(new_cpd)
             self.check_model()
 
-    def get_cardinality(self,node=None):
-        """
-        """
-        if node:
-            return self.get_cpds(node).cardinality[0]
-        else:
-            cardinalities = defaultdict(int)
-            for cpd in self.cpds:
-                cardinalities[cpd.variable] = cpd.cardinality[0]
-            return cardinalities
+    def _get_cardinality(self,node):
+
+            temp_node = (node[0], 1 - node[1]) if node[1] else node
+            return self.get_cpds(temp_node).cardinality[0]
 
     def moralize(self):
         """
